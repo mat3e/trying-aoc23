@@ -184,6 +184,10 @@ class Point {
     get symbolic() {
         return isSymbol(this.value);
     }
+
+    get asterisk() {
+        return this.value === '*';
+    }
 }
 
 const pointsDictionary = new Map();
@@ -207,13 +211,13 @@ input.forEach((line, row) => {
 
 let sum = 0;
 adjacency.forEach((neighborsSet, pointText) => {
-    const hasSymbolicNeighbor = [...neighborsSet].some(neighbor => pointsDictionary.get(neighbor).symbolic);
-    const point = pointsDictionary.get(pointText);
-    if (!point.symbolic && hasSymbolicNeighbor) {
-        sum += point.asNumber;
+    if (pointsDictionary.get(pointText).asterisk && neighborsSet.size === 2) {
+        const [first, second] = [...neighborsSet].map(neighbor => pointsDictionary.get(neighbor));
+        if (!first.symbolic && !second.symbolic) {
+            sum += first.asNumber * second.asNumber;
+        }
     }
 });
-
 console.log(sum);
 
 function isSymbol(value) {
