@@ -139,81 +139,18 @@ const input = `...788.............................54.........501...........555..
 .......&...625......*.........7*121...........494......=...8......*....@..............................*..........*......998*973.......$.....
 ....691............614...795..........152............120...........238..496...........................477..........................994......`.split('\n');
 
-let sum = 0;
-input.forEach((line, row) => {
-    let columnStart = 0;
-    for (let column = 0; column < line.length; column++) {
-        const current = line[column];
-        if (current === '.' || isSymbol(current)) {
-            const validatedValue = validate(row, columnStart, column);
-            if (validatedValue) {
-                sum += validatedValue;
-            }
-            columnStart = -1;
-            continue;
-        }
-        if (columnStart === -1) {
-            columnStart = column;
-        }
-    }
-    const validatedValue = validate(row, columnStart, line.length);
-    if (validatedValue) {
-        sum += validatedValue;
-    }
-});
-
-console.log(sum);
-
-function validate(line, start, end) {
-    if (start === -1) {
-        return NaN;
-    }
-    if (thisLineHasSymbol(line, start, end) || aboveLineHasSymbol(line, start, end) || belowLineHasSymbol(line, start, end)) {
-        return +input[line].slice(start, end);
-    }
-    return NaN;
-}
-
-function thisLineHasSymbol(line, start, end) {
-    return isSymbol(input[line][start - 1]) || isSymbol(input[line][end]);
-}
-
-function aboveLineHasSymbol(line, start, end) {
-    if (!input[line - 1]) {
-        return false;
-    }
-    return hasSymbol(safeBiggerSlice(input[line - 1], start, end));
-}
-
-function belowLineHasSymbol(line, start, end) {
-    if (!input[line + 1]) {
-        return false;
-    }
-    return hasSymbol(safeBiggerSlice(input[line + 1], start, end));
-}
-
-function safeBiggerSlice(text, start, end) {
-    start = Math.max(start - 1, 0);
-    end = Math.min(end + 1, text.length);
-    return text.slice(start, end);
-}
-
-function hasSymbol(text) {
-    return text.replaceAll(/[.0-9]+/g, '').length > 0;
-}
-
-function isSymbol(value) {
-    return value && value !== '.' && isNaN(+value);
-}
-
-/*class Point {
-    #includedPoints = [];
+class Point {
+    #pointsFromPointWidth = [];
 
     constructor(x, y, value) {
-        this.x = x - (value.length === 1 ? 0 : value.length);
+        this.x = x - value.length + 1;
         this.y = y;
         this.value = value;
-        this.#includedPoints = rangeTo(this.value.length).map(i => `${this.x + i}x${this.y}`);
+        this.#pointsFromPointWidth = rangeTo(this.value.length).map(i => `${this.x + i}x${this.y}`);
+    }
+
+    allIncludedPoints() {
+        return this.#pointsFromPointWidth;
     }
 
     toString() {
@@ -237,7 +174,7 @@ function isSymbol(value) {
             `${x + 1}x${y - 1}`,
             `${x - 1}x${y + 1}`,
             `${x + 1}x${y + 1}`,
-        ].filter(neighbor => !this.#includedPoints.includes(neighbor));
+        ].filter(neighbor => !this.#pointsFromPointWidth.includes(neighbor));
     }
 
     get asNumber() {
@@ -252,31 +189,29 @@ function isSymbol(value) {
 const pointsDictionary = new Map();
 const adjacency = new Map();
 
-input.split('\n').forEach((line, y) => {
+input.forEach((line, row) => {
     let value = "";
-    for (let x = 0; x < line.length; x++) {
-        if (line[x] === '.') {
-            if (value !== "") {
-                value = processPoint(x, y, value);
-            }
+    for (let column = 0; column < line.length; column++) {
+        if (line[column] === '.') {
+            processPoint(column - 1, row, value);
+            value = "";
             continue;
         }
-        if (isSymbol(line[x])) {
-            if (value !== "") {
-                value = processPoint(x, y, value);
-            }
-            value = processPoint(x, y, line[x]);
+        if (isSymbol(line[column])) {
+            processPoint(column - 1, row, value);
+            processPoint(column, row, line[column]);
+            value = "";
             continue;
         }
-        value += line[x];
+        value += line[column];
     }
-    processPoint(line.length, y, value);
+    processPoint(line.length - 1, row, value);
 });
 
 let sum = 0;
-pointsDictionary.forEach((point, pointText) => {
-    const neighborsSet = adjacency.get(pointText);
+adjacency.forEach((neighborsSet, pointText) => {
     const hasSymbolicNeighbor = [...neighborsSet].some(neighbor => pointsDictionary.get(neighbor).symbolic);
+    const point = pointsDictionary.get(pointText);
     if (!point.symbolic && hasSymbolicNeighbor) {
         sum += point.asNumber;
     }
@@ -290,31 +225,25 @@ function isSymbol(value) {
 
 function processPoint(x, y, value) {
     if (value === "") {
-        return "";
+        return;
     }
     const point = new Point(x, y, value);
-    pointsDictionary.set(point.toString(), point);
+    point.allIncludedPoints().forEach(pointText => pointsDictionary.set(pointText, point));
     adjacency.set(point.toString(), new Set());
     connectWithNeighbors(point);
-    Point.last = point;
-    return "";
 }
 
 function connectWithNeighbors(point) {
     const pointText = point.toString();
     point.potentialNeighbors.forEach(neighbor => {
         if (pointsDictionary.has(neighbor)) {
-            adjacency.get(pointText).add(neighbor);
-            adjacency.get(neighbor).add(pointText);
+            const normalizedNeighbor = pointsDictionary.get(neighbor).toString();
+            adjacency.get(pointText).add(normalizedNeighbor);
+            adjacency.get(normalizedNeighbor).add(pointText);
         }
     });
-    if (Point.last && Point.last.potentialNeighbors.has(pointText)) {
-        const previousPointText = Point.last.toString();
-        adjacency.get(pointText).add(previousPointText);
-        adjacency.get(previousPointText).add(pointText);
-    }
 }
 
 function rangeTo(limit) {
     return [...Array(limit).keys()];
-}*/
+}
