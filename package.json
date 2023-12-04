@@ -1,0 +1,30 @@
+{
+  "name": "trying-aoc23",
+  "version": "0.0.1",
+  "description": "Trying Advent of Code for the first time",
+  "main": "1-1.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mat3e/trying-aoc23.git"
+  },
+  "keywords": [
+    "Advent",
+    "Code"
+  ],
+  "author": "mat3e",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mat3e/trying-aoc23/issues"
+  },
+  "homepage": "https://github.com/mat3e/trying-aoc23#readme"
+}
