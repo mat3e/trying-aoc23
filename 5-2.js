@@ -1,22 +1,59 @@
 export function flow(inputText) {
     const seeds = parseSeeds(inputText.split('\n')[0]);
     const maps = parseMaps(inputText);
-    const result = [];
-    seeds.forEach(seed => {
+    let result = Number.POSITIVE_INFINITY;
+    seeds.iterate(seed => {
         let current = seed;
         maps.forEach(map => {
             current = map.get(current);
         });
-        result.push(current);
+        result = Math.min(result, current);
     });
     return result;
 }
 
-export function parseSeeds(inputLine) {
-    return toNumbers(inputLine.replace('seeds: ', '').split(' '));
+class Range {
+    #start;
+    #range;
+
+    constructor(start, range) {
+        this.#start = start;
+        this.#range = range;
+    }
+
+    iterate(callback) {
+        for (let i = 0; i < this.#range; ++i) {
+            callback(this.#start + i);
+        }
+    }
 }
 
-class Range {
+class Ranges {
+    #ranges = [];
+
+    add(start, range) {
+        this.#ranges.push(new Range(start, range));
+    }
+
+    iterate(callback) {
+        for (let range of this.#ranges) {
+            range.iterate(callback);
+        }
+    }
+}
+
+export function parseSeeds(inputLine) {
+    const numbers = toNumbers(inputLine.replace('seeds: ', '').split(' '));
+    const pairs = [];
+    for (let i = 0; i < numbers.length; i += 2) {
+        pairs.push([numbers[i], numbers[i + 1]]);
+    }
+    const result = new Ranges();
+    pairs.forEach(startAndRange => result.add(...startAndRange));
+    return result;
+}
+
+class RangeMap {
     #source;
     #range;
     #destination;
@@ -36,11 +73,11 @@ class Range {
     }
 }
 
-class Ranges {
+class RangeMaps {
     #ranges = [];
 
     set(destination, source, range) {
-        this.#ranges.push(new Range(destination, source, range));
+        this.#ranges.push(new RangeMap(destination, source, range));
     }
 
     get(candidate) {
@@ -59,7 +96,7 @@ export function parseMaps(inputText) {
     const maps = [];
     for (let i = 2; i < input.length; i++) {
         if (input[i].includes('map:')) {
-            maps.push(new Ranges());
+            maps.push(new RangeMaps());
             continue;
         }
         if (input[i].trim().length > 0) {
@@ -76,7 +113,7 @@ function toNumbers(strings) {
         .map(num => +num);
 }
 
-console.info(flow(`seeds: 4043382508 113348245 3817519559 177922221 3613573568 7600537 773371046 400582097 2054637767 162982133 2246524522 153824596 1662955672 121419555 2473628355 846370595 1830497666 190544464 230006436 483872831
+const mapsPart = `
 
 seed-to-soil map:
 4064811 506246814 25615317
@@ -323,4 +360,18 @@ humidity-to-location map:
 3647633732 3913631042 218755302
 555763616 2029239123 107328601
 2402036949 270185908 35023466
-90229602 2522120710 67973174`).sort((a, b) => a - b)[0]);
+90229602 2522120710 67973174`;
+
+// manual batching :P
+console.info(flow('seeds: 230006436 483872831' + mapsPart));
+
+// 4043382508 113348245 => 554772016
+// 3817519559 177922221 => 289863851
+// 3613573568 7600537   => 2036266413
+// 773371046 400582097  => 60568880
+// 2054637767 162982133 => 90229602
+// 2246524522 153824596 => 63092906
+// 1662955672 121419555 => 339856872
+// 2473628355 846370595 => 151556022
+// 1830497666 190544464 => 390614672
+// 230006436 483872831  => 237603517
