@@ -64,4 +64,8 @@ describe('full flow', () => {
     it('finds smallest location', () => {
         expect(flow(input)).toBe(46);
     });
+
+    it('can run from precomputed maps', () => {
+        expect(flow(input.split('\n')[0], parseMaps(input))).toBe(46);
+    });
 });
