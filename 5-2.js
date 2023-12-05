@@ -1,15 +1,15 @@
 export function flow(inputText, maps) {
     const seeds = parseSeeds(inputText.split('\n')[0]);
-    maps = maps ?? parseMaps(inputText);
-    let result = Number.POSITIVE_INFINITY;
-    seeds.iterate(seed => {
-        let current = seed;
+    maps = (maps ?? parseMaps(inputText)).reverse();
+    for (let location = 0; ; ++location) {
+        let current = location;
         maps.forEach(map => {
-            current = map.get(current);
+            current = map.reverseGet(current);
         });
-        result = Math.min(result, current);
-    });
-    return result;
+        if (seeds.contains(current)) {
+            return location;
+        }
+    }
 }
 
 class Range {
@@ -19,6 +19,10 @@ class Range {
     constructor(start, range) {
         this.#start = start;
         this.#range = range;
+    }
+
+    contains(candidate) {
+        return this.#start <= candidate && candidate < this.#start + this.#range;
     }
 
     iterate(callback) {
@@ -33,6 +37,10 @@ class Ranges {
 
     add(start, range) {
         this.#ranges.push(new Range(start, range));
+    }
+
+    contains(candidate) {
+        return this.#ranges.some(range => range.contains(candidate));
     }
 
     iterate(callback) {
@@ -75,6 +83,14 @@ class RangeMap {
         this.#range = range;
     }
 
+    reverseGet(candidate) {
+        const delta = candidate - this.#destination;
+        if (candidate >= this.#destination && delta < this.#range) {
+            return this.#source + delta;
+        }
+        return undefined;
+    }
+
     get(candidate) {
         const delta = candidate - this.#source;
         if (candidate >= this.#source && delta < this.#range) {
@@ -89,6 +105,16 @@ class RangeMaps {
 
     set(destination, source, range) {
         this.#ranges.push(new RangeMap(destination, source, range));
+    }
+
+    reverseGet(candidate) {
+        for (const range of this.#ranges) {
+            const result = range.reverseGet(candidate);
+            if (result) {
+                return result;
+            }
+        }
+        return candidate;
     }
 
     get(candidate) {
@@ -378,10 +404,14 @@ async function asyncFlow(seeds, maps) {
 }
 
 const startTime = Date.now();
-asyncFlow(
+console.info(flow(
+    'seeds: 4043382508 113348245 3817519559 177922221 3613573568 7600537 773371046 400582097 2054637767 162982133 2246524522 153824596 1662955672 121419555 2473628355 846370595 1830497666 190544464 230006436 483872831',
+    parsedMaps));
+console.log(`Took ${Date.now() - startTime}`);
+/*asyncFlow(
     parseSeeds('seeds: 4043382508 113348245 3817519559 177922221 3613573568 7600537 773371046 400582097 2054637767 162982133 2246524522 153824596 1662955672 121419555 2473628355 846370595 1830497666 190544464 230006436 483872831'),
     parsedMaps
 ).then(min => {
     console.info(min);
     console.log(`Took ${Date.now() - startTime}`); // takes 18+ minutes
-});
+});*/
