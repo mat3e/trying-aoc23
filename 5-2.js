@@ -40,6 +40,19 @@ class Ranges {
             range.iterate(callback);
         }
     }
+
+    findMinInEachRange(maps) {
+        return Promise.all(this.#ranges.map(range => new Promise(resolve => {
+            let min = Number.POSITIVE_INFINITY;
+            range.iterate(candidate => {
+                maps.forEach(map => {
+                    candidate = map.get(candidate);
+                });
+                min = Math.min(min, candidate);
+            });
+            resolve(min);
+        })));
+    }
 }
 
 export function parseSeeds(inputLine) {
@@ -359,17 +372,16 @@ humidity-to-location map:
 2402036949 270185908 35023466
 90229602 2522120710 67973174`);
 
-// seeds: 4043382508 113348245 3817519559 177922221 3613573568 7600537 773371046 400582097 2054637767 162982133 2246524522 153824596 1662955672 121419555 2473628355 846370595 1830497666 190544464 230006436 483872831
-// manual batching :P
-// console.info(flow('seeds: 230006436 483872831' + mapsPart));
+async function asyncFlow(seeds, maps) {
+    const mins = await seeds.findMinInEachRange(maps);
+    return Math.min(...mins);
+}
 
-// 4043382508 113348245 => 554772016
-// 3817519559 177922221 => 289863851
-// 3613573568 7600537   => 2036266413
-// 773371046 400582097  => 60568880
-// 2054637767 162982133 => 90229602
-// 2246524522 153824596 => 63092906
-// 1662955672 121419555 => 339856872
-// 2473628355 846370595 => 151556022
-// 1830497666 190544464 => 390614672
-// 230006436 483872831  => 237603517
+const startTime = Date.now();
+asyncFlow(
+    parseSeeds('seeds: 4043382508 113348245 3817519559 177922221 3613573568 7600537 773371046 400582097 2054637767 162982133 2246524522 153824596 1662955672 121419555 2473628355 846370595 1830497666 190544464 230006436 483872831'),
+    parsedMaps
+).then(min => {
+    console.info(min);
+    console.log(`Took ${Date.now() - startTime}`); // takes 18+ minutes
+});
