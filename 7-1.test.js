@@ -33,13 +33,13 @@ describe('playGame', () => {
             KTJJT 220
             QQQJA 483`);
 
-        expect(result).toEqual(new Map([
+        expect([...result.entries()]).toEqual([
             ['32T3K', 765],
             ['KTJJT', 220],
             ['KK677', 28],
             ['T55J5', 684],
             ['QQQJA', 483],
-        ]));
+        ]);
     });
 });
 
