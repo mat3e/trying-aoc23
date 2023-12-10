@@ -1,3 +1,46 @@
+const defaultResize = [
+    '...',
+    '...',
+    '...',
+];
+const resized = new Map([
+    ['F', [
+        '...',
+        '.F-',
+        '.|.',
+    ]],
+    ['-', [
+        '...',
+        '---',
+        '...',
+    ]],
+    ['7', [
+        '...',
+        '-7.',
+        '.|.',
+    ]],
+    ['|', [
+        '.|.',
+        '.|.',
+        '.|.',
+    ]],
+    ['L', [
+        '.|.',
+        '.L-',
+        '...',
+    ]],
+    ['J', [
+        '.|.',
+        '-J.',
+        '...',
+    ]],
+    ['S', [
+        '.|.',
+        '-S-',
+        '.|.',
+    ]],
+]);
+
 const validConnections = new Map([
     ['F', {
         left: new Set(),
@@ -69,13 +112,12 @@ export class Graph {
     #height = NaN;
     #width = Number.NEGATIVE_INFINITY;
     #mainLoop = new Set();
-    #capturedInput = '';
+    #resizedInput = '';
 
-    constructor(input, pp = false) {
-        if (pp) {
-            this.#capturedInput = input;
-        }
+    constructor(input) {
+        input = this.#scaleUp(input);
         const lines = input.split('\n');
+        this.#resizedInput = input;
         this.#height = lines.length - 1;
         lines.forEach((line, y) => {
             line = line.trim();
@@ -95,6 +137,24 @@ export class Graph {
             }
         });
         this.#mainLoop = this.#traverseFrom(this.#sPoint);
+    }
+
+    #scaleUp(input) {
+        const result = [];
+        input.split('\n').forEach((line) => {
+            line = line.trim();
+            let row = '';
+            let row2 = '';
+            let row3 = '';
+            for (let x = 0; x < line.length; x++) {
+                const resizedValue = resized.get(line[x]) ?? defaultResize;
+                row += resizedValue[0];
+                row2 += resizedValue[1];
+                row3 += resizedValue[2];
+            }
+            result.push(row, row2, row3);
+        });
+        return result.join('\n');
     }
 
     get enclosed() {
@@ -125,10 +185,7 @@ export class Graph {
     }
 
     prettyPrint() {
-        if (!this.#capturedInput) {
-            return;
-        }
-        this.#capturedInput.split('\n').forEach((line, y) => {
+        this.#resizedInput.split('\n').forEach((line, y) => {
             line = line.trim();
             const firstPoint = this.#toPoint(0, y);
             let previousInMain = this.#mainLoop.has(firstPoint);
@@ -158,32 +215,33 @@ export class Graph {
             console.log(formattedText, ...formattingHints);
         });
     }
+
     #escapePoints() {
         const escapePoints = new Set();
         for (let x = 0; x <= this.#width; x++) {
             const firstCandidate = this.#toPoint(x, 0);
             const secondCandidate = this.#toPoint(x, this.#height);
-            if (!this.#mainLoop.has(firstCandidate)) {
+            if (!this.#mainLoop.has(firstCandidate) && !validConnections.has(firstCandidate)) {
                 escapePoints.add(firstCandidate);
             }
-            if (!this.#mainLoop.has(secondCandidate)) {
+            if (!this.#mainLoop.has(secondCandidate) && !validConnections.has(secondCandidate)) {
                 escapePoints.add(secondCandidate);
             }
         }
         for (let y = 0; y <= this.#height; y++) {
             const firstCandidate = this.#toPoint(0, y);
             const secondCandidate = this.#toPoint(this.#width, y);
-            if (!this.#mainLoop.has(firstCandidate)) {
+            if (!this.#mainLoop.has(firstCandidate) && !validConnections.has(firstCandidate)) {
                 escapePoints.add(firstCandidate);
             }
-            if (!this.#mainLoop.has(secondCandidate)) {
+            if (!this.#mainLoop.has(secondCandidate) && !validConnections.has(secondCandidate)) {
                 escapePoints.add(secondCandidate);
             }
         }
         return escapePoints;
     }
 
-    #traverseFrom(point, findNeighbors = current => this.#adjacency.get(current)) {
+    #traverseFrom(point, findNeighbors = current => [...this.#adjacency.get(current)].filter(point => this.#adjacency.get(point).size === 2)) {
         const visited = new Set();
         const queue = [point];
         while (queue.length > 0) {
@@ -253,10 +311,10 @@ new Graph(
     |FFJF7L7F-JF7|JL---7
     7-L-JL7||F7|L7F-7F7|
     L.L7LFJ|||||FJL7||LJ
-    L7JLJL-JLJLJL--JLJ.L`,
-    true
+    L7JLJL-JLJLJL--JLJ.L`
 ).prettyPrint();
 
+console.log('squeezing 2 from test');
 new Graph(
     `........
     .S----7.
@@ -266,20 +324,20 @@ new Graph(
     .|L--J|.
     .|IIII|.
     .L----J.
-    ........`,
-    true
+    ........`
 ).prettyPrint();
 
+console.log('squeezing 1 from test')
 new Graph(
     `..........
     .S------7.
     .|F----7|.
     .||OOOO||.
+    .||OOOO||.
     .|L-7F-J|.
     .|II||II|.
     .L--JL--J.
-    ..........`,
-    true
+    ..........`
 ).prettyPrint();
 
 new Graph(
@@ -290,6 +348,17 @@ new Graph(
     .|L-7F-J|.
     .|II||F7|.
     .L--JLJLJ.
-    ..........`,
-    true
+    ..........`
+).prettyPrint();
+
+new Graph(
+    `...........
+    .S-------7.
+    .|F-----7|.
+    .||.....||.
+    .||.....||.
+    .|L-7.F-J|.
+    .|..|.|..|.
+    .L--J.L--J.
+    ...........`
 ).prettyPrint();
