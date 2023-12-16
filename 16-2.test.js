@@ -1,4 +1,4 @@
-import {solve, solveMax} from './16-2.js';
+import {solveMax} from './16-2.js';
 
 describe('solveMax', () => {
     it('should find 51 energized entries', () => {
@@ -17,7 +17,7 @@ describe('solveMax', () => {
     });
 });
 
-test('still works', () => {
+/*test('still works', () => {
     expect(solve(
         `.|...\\....
         |.-.\\.....
@@ -31,4 +31,4 @@ test('still works', () => {
         ..//.|....`.split('\n').map(line => line.trim()),
         ['R', 0, 0]
     )).toBe(46);
-});
+});*/

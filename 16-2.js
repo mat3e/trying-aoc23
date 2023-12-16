@@ -53,40 +53,39 @@ function solve(split, start) {
 
 const cache = new Map();
 
-export function solveRecursive(split, point, visited = new Set()) {
+function withCache(key, value) {
+    cache.set(key, value);
+    return value;
+}
+
+export function dynamicSolve(split, point, visited = new Set()) {
     const [direction, x, y] = point;
     const visitSnapshot = toVisited(direction, x, y);
+    if (cache.has(visitSnapshot)) {
+        return cache.get(visitSnapshot);
+    }
     if (!inSplit(split, x, y) || visited.has(visitSnapshot)) {
-        return 0;
+        return withCache(visitSnapshot, []);
     }
     const char = split[y][x];
     visited.add(visitSnapshot);
-    let nextResults = 0;
+    const result = new Set([toEntry(x, y)]);
     switch (char) {
         case EMPTY:
-            nextResults = solveRecursive(split, naturalNext(direction, x, y), visited);
+            dynamicSolve(split, naturalNext(direction, x, y), visited).forEach(entry => result.add(entry));
             break;
         case SLASH_MIRROR:
         case BACKSLASH_MIRROR:
-            nextResults = solveRecursive(split, mirrorNext(direction, x, y, char), visited);
+            dynamicSolve(split, mirrorNext(direction, x, y, char), visited).forEach(entry => result.add(entry));
             break;
         case VERTICAL_SPLITTER:
         case HORIZONTAL_SPLITTER:
             splitterNext(direction, x, y, char).forEach((point) => {
-                nextResults += solveRecursive(split, point, visited);
+                dynamicSolve(split, point, visited).forEach(entry => result.add(entry));
             });
             break;
     }
-    console.log(`${x}x${y} (${direction}): ${1 + nextResults}`);
-    // cache.set(visitSnapshot, 1 + nextResults);
-    return 1 + nextResults; // todo: should skip duplicated crossings
-}
-
-function toRecursiveKey(direction, x, y, char) {
-    if (char === SLASH_MIRROR || char === BACKSLASH_MIRROR) {
-        return toVisited(direction, x, y);
-    }
-    return toEntry(x, y);
+    return withCache(visitSnapshot, result);
 }
 
 function toVisited(direction, x, y) {
