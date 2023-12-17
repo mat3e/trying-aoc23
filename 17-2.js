@@ -3,8 +3,8 @@ export function dijkstraSolve(input) {
     const queue = new BinaryHeap();
     const dist = new Map();
     const statesDictionary = new Map();
-    const path = new Map();
-    let current = new CrucibleState(0, 0, RIGHT);
+    //const path = new Map();
+    let current = new UltraCrucibleState(0, 0, RIGHT);
     let currentAsText = current.toSnapshot();
     dist.set(currentAsText, 0);
     queue.push(currentAsText, 0);
@@ -14,12 +14,12 @@ export function dijkstraSolve(input) {
         current = statesDictionary.get(currentAsText);
         if (current.toPoint() === graph.targetPoint) {
             const result = dist.get(currentAsText);
-            const pathSteps = [currentAsText];
+            /*const pathSteps = [currentAsText];
             while (path.has(currentAsText)) {
                 currentAsText = path.get(currentAsText);
                 pathSteps.unshift(currentAsText);
             }
-            console.log(pathSteps.join(' => '));
+            console.log(pathSteps.join(' => '));*/
             return result;
         }
         const currentPoint = current.toPoint();
@@ -31,11 +31,11 @@ export function dijkstraSolve(input) {
             if (!dist.has(nextStateAsText) || potentialDistance < dist.get(nextStateAsText)) {
                 dist.set(nextStateAsText, potentialDistance);
                 queue.update(nextStateAsText, potentialDistance);
-                path.set(nextStateAsText, currentAsText);
+                //path.set(nextStateAsText, currentAsText);
             }
         });
     }
-    return 0;
+    return -1;
 }
 
 class Graph {
@@ -51,8 +51,8 @@ class Graph {
         lines.forEach((line, y) => {
             for (let x = 0; x < line.length; x++) {
                 const weight = +line[x];
-                this.#points.set(toPoint(x, y), weight);
-                this.#adjacency.set(toPoint(x, y), new Set());
+                this.#points.set(toPointText(x, y), weight);
+                this.#adjacency.set(toPointText(x, y), new Set());
                 this.#plug(x, y, weight);
                 this.#targetX = Math.max(this.#targetX, x);
             }
@@ -60,22 +60,63 @@ class Graph {
     }
 
     get targetPoint() {
-        return toPoint(this.#targetX, this.#targetY);
+        return toPointText(this.#targetX, this.#targetY);
     }
 
     neighborsOf(pointText) {
-        return [...this.#adjacency.get(pointText)].map(neighbor => this.#fromPoint(neighbor));
+        const directNeighborsArray = [...this.#adjacency.get(pointText)];
+        const result = new Set(directNeighborsArray) // direct neighbors
+        directNeighborsArray
+            .flatMap(neighborText => [...this.#adjacency.get(neighborText)])
+            .flatMap(neighborText => [...this.#adjacency.get(neighborText)])
+            .flatMap(neighborText => [...this.#adjacency.get(neighborText)]) // 4 steps away
+            .forEach(farNeighborText => result.add(farNeighborText));
+        return [...result].map(neighborText => this.#fromPointText(neighborText));
     }
 
     weight(from, to) {
-        return this.#edges.get(this.#toEdge(from, to));
+        return this.#sumEdges(from, to);
+    }
+
+    #sumEdges(from, to) {
+        const [fromX, fromY] = this.#fromPointText(from);
+        const [toX, toY] = this.#fromPointText(to);
+        return this.#sumWidthEdges(fromX, toX, toY) + this.#sumHeightEdges(fromX, fromY, toY);
+    }
+
+    #sumWidthEdges(fromX, toX, y) {
+        if (fromX === toX) {
+            return 0;
+        }
+        const change = fromX < toX ? (x => x + 1) : (x => x - 1);
+        let result = 0;
+        while (fromX !== toX) {
+            const newX = change(fromX);
+            result += this.#edges.get(this.#toEdge(toPointText(fromX, y), toPointText(newX, y)));
+            fromX = newX;
+        }
+        return isNaN(result) ? Number.POSITIVE_INFINITY : result;
+    }
+
+    #sumHeightEdges(x, fromY, toY) {
+        if (fromY === toY) {
+            return 0;
+        }
+        const change = fromY < toY ? (y => y + 1) : (y => y - 1);
+        let result = 0;
+        while (fromY !== toY) {
+            const newY = change(fromY);
+            result += this.#edges.get(this.#toEdge(toPointText(x, fromY), toPointText(x, newY)));
+            fromY = newY;
+        }
+        return isNaN(result) ? Number.POSITIVE_INFINITY : result;
     }
 
     #plug(x, y, weight) {
-        const point = toPoint(x, y);
+        const point = toPointText(x, y);
         // potential neighbors
         [[x, y + 1], [x + 1, y], [x, y - 1], [x - 1, y]].forEach(([potentialX, potentialY]) => {
-            const potentialNeighbor = toPoint(potentialX, potentialY);
+            const potentialNeighbor = toPointText(potentialX, potentialY);
             if (this.#points.has(potentialNeighbor)) {
                 this.#adjacency.get(point).add(potentialNeighbor);
                 this.#adjacency.get(potentialNeighbor).add(point);
@@ -89,51 +130,32 @@ class Graph {
         return `${start}-${end}`;
     }
 
-    #fromPoint(neighbor) {
+    #fromPointText(neighbor) {
         return neighbor.split(',').map(n => +n);
     }
 }
 
-export const [RIGHT, DOWN, LEFT, UP] = ['R', 'D', 'L', 'U'];
+const [RIGHT, DOWN, LEFT, UP] = ['R', 'D', 'L', 'U'];
 
-export class CrucibleState {
+class UltraCrucibleState {
     #x = NaN;
     #y = NaN;
     #direction = NaN;
     #movesCount = NaN;
 
-    constructor(x, y, direction, moves = 1) {
+    constructor(x, y, direction, moves = 0) {
         this.#x = x;
         this.#y = y;
         this.#direction = direction;
         this.#movesCount = moves;
     }
 
-    get potentialMoves() {
-        switch (this.#direction) {
-            case RIGHT:
-                return [this.#continuationMove, [this.#x, this.#y + 1], [this.#x, this.#y - 1]];
-            case DOWN:
-                return [this.#continuationMove, [this.#x + 1, this.#y], [this.#x - 1, this.#y]];
-            case LEFT:
-                return [this.#continuationMove, [this.#x, this.#y + 1], [this.#x, this.#y - 1]];
-            case UP:
-                return [this.#continuationMove, [this.#x + 1, this.#y], [this.#x - 1, this.#y]];
-        }
-    }
-
     chooseAvailable(pointsToChooseFrom) {
-        const potentialMoves = this.potentialMoves;
-        const indicesToRemove = [];
-        const results = [];
-        pointsToChooseFrom.forEach(([x, y], index) => {
-            if (potentialMoves.some(([potentialX, potentialY]) => potentialX === x && potentialY === y && (!this.#isContinuation(x, y) || this.#movesCount < 3))) {
-                results.push(this.#moveTo(x, y));
-                indicesToRemove.push(index);
-            }
-        });
-        indicesToRemove.sort((a, b) => b - a).forEach(index => pointsToChooseFrom.splice(index, 1));
-        return results;
+        const potentialMoves = this.#potentialMoves;
+        return pointsToChooseFrom
+            .filter(([x, y]) => potentialMoves.some(([potentialX, potentialY]) => potentialX === x && potentialY === y))
+            .filter(([x, y]) => !this.#isContinuation(x, y) || this.#movesCount < 10)
+            .map(([x, y]) => this.#moveTo(x, y));
     }
 
     toSnapshot() {
@@ -141,14 +163,28 @@ export class CrucibleState {
     }
 
     toPoint() {
-        return toPoint(this.#x, this.#y);
+        return toPointText(this.#x, this.#y);
+    }
+
+    get #potentialMoves() {
+        switch (this.#direction) {
+            case RIGHT:
+                return [this.#continuationMove, [this.#x, this.#y + 4], [this.#x, this.#y - 4]];
+            case DOWN:
+                return [this.#continuationMove, [this.#x + 4, this.#y], [this.#x - 4, this.#y]];
+            case LEFT:
+                return [this.#continuationMove, [this.#x, this.#y + 4], [this.#x, this.#y - 4]];
+            case UP:
+                return [this.#continuationMove, [this.#x + 4, this.#y], [this.#x - 4, this.#y]];
+        }
     }
 
     #moveTo(x, y) {
         if (this.#isContinuation(x, y)) {
-            return new CrucibleState(x, y, this.#direction, this.#movesCount + 1);
+            return new UltraCrucibleState(x, y, this.#direction, this.#movesCount + 1);
         }
-        return new CrucibleState(x, y, this.#directionFor(x, y), 1);
+        // we can only change for 4 moves in a row
+        return new UltraCrucibleState(x, y, this.#directionFor(x, y), 4);
     }
 
     #isContinuation(x, y) {
@@ -177,7 +213,7 @@ export class CrucibleState {
     }
 }
 
-function toPoint(x, y) {
+function toPointText(x, y) {
     return `${x},${y}`;
 }
 
@@ -278,8 +314,8 @@ class BinaryHeap {
     }
 }
 
-console.time();
-const result = dijkstraSolve(
+/*console.time();
+console.log(dijkstraSolve(
     `421255121134531324434224143433234222645522263425354652265654465343546325466356326664652622552555634426222232263662453455414535421555533532144
 115335113455213225154512464534444422544555235634536325456463446546565455557574772332654534352536225446456322346564565553325132355512443432135
 355244523125333225432546332644522424432353444424446545656637773367534765747475377767353346466566225342546432566355543235521125113543125335514
@@ -420,6 +456,5 @@ const result = dijkstraSolve(
 233131323312245445556654634462432522665544534325747347374475453765775535646733533764667367647757336262665543256536365432365434421153115155254
 212324141243242341514552355225445345344422636343353566454455565376736357345457776437445664376434654234235524343243253463623253145213142141413
 542412235413324555521652356456554564253652333234455624645437733646665374457654663655557637624433662434435265453424552623634432224341415425444
-354345422213222523445512245236255624325622555254435435356757456446675636464464443535576253654362224525232266665346633255235124354324132424545`);
-console.log(result);
-console.timeEnd();
+354345422213222523445512245236255624325622555254435435356757456446675636464464443535576253654362224525232266665346633255235124354324132424545`));
+console.timeEnd();*/
