@@ -1,104 +1,95 @@
-export class Graph {
-    #colors = new Map();
-    #adjacency = new Map();
-    #maxWidth = Number.NEGATIVE_INFINITY;
-    #maxHeight = Number.NEGATIVE_INFINITY;
-    #minWidth = Number.POSITIVE_INFINITY;
-    #minHeight = Number.POSITIVE_INFINITY;
-
-    constructor(input) {
-        const currentPoint = [0, 0];
-        let recentText = toPointText(...currentPoint);
-        this.#colors.set(recentText, '');
-        this.#adjacency.set(recentText, new Set());
-        input.split('\n')
-            .map(line => line.trim())
-            .map(line => line.split(' '))
-            .map(([direction, length, color]) => [direction, parseInt(length), color])
-            .forEach(([direction, length, color]) => {
-                switch (direction) {
-                    case 'R':
-                        for (let x = 0; x < length; x++) {
-                            currentPoint[0]++;
-                            const newRecentText = toPointText(...currentPoint);
-                            this.#connect(newRecentText, color, recentText);
-                            recentText = newRecentText;
-                        }
-                        break;
-                    case 'L':
-                        for (let x = 0; x < length; x++) {
-                            currentPoint[0]--;
-                            const newRecentText = toPointText(...currentPoint);
-                            this.#connect(newRecentText, color, recentText);
-                            recentText = newRecentText;
-                        }
-                        break;
-                    case 'U':
-                        for (let y = 0; y < length; y++) {
-                            currentPoint[1]--;
-                            const newRecentText = toPointText(...currentPoint);
-                            this.#connect(newRecentText, color, recentText);
-                            recentText = newRecentText;
-                        }
-                        break;
-                    case 'D':
-                        for (let y = 0; y < length; y++) {
-                            currentPoint[1]++;
-                            const newRecentText = toPointText(...currentPoint);
-                            this.#connect(newRecentText, color, recentText);
-                            recentText = newRecentText;
-                        }
-                        break;
-                }
-                this.#maxWidth = Math.max(this.#maxWidth, currentPoint[0]);
-                this.#maxHeight = Math.max(this.#maxHeight, currentPoint[1]);
-                this.#minWidth = Math.min(this.#minWidth, currentPoint[0]);
-                this.#minHeight = Math.min(this.#minHeight, currentPoint[1]);
-            });
-    }
-
-    #connect(current, color, previous) {
-        if (current === '0,0') {
-            this.#adjacency.get(current).add(previous);
-            return;
+export function picksTheorem(input) {
+    let currentPoint = new Point(0, 0);
+    const verticesSet = new Set([currentPoint.toString()]);
+    let perimeter = 0;
+    input.split('\n')
+        .map(line => line.trim())
+        .map(line => line.split('(#'))
+        .map(([, code]) => [parseInt(code.slice(0, 5), 16), code[5]]).forEach(([weight, direction]) => {
+        perimeter += weight;
+        switch (direction) {
+            case '0':
+                currentPoint = currentPoint.addX(weight);
+                verticesSet.add(currentPoint.toString());
+                break;
+            case '2':
+                currentPoint = currentPoint.addX(-weight);
+                verticesSet.add(currentPoint.toString());
+                break;
+            case '3':
+                currentPoint = currentPoint.addY(-weight);
+                verticesSet.add(currentPoint.toString());
+                break;
+            case '1':
+                currentPoint = currentPoint.addY(weight);
+                verticesSet.add(currentPoint.toString());
+                break;
         }
-        this.#colors.set(current, color);
-        this.#adjacency.get(previous).add(current);
-        this.#adjacency.set(current, new Set([previous]));
-    }
-
-    get cycleLength() {
-        return this.#adjacency.size;
-    }
-
-    get totalWrapped() {
-        let wrapped = new Set();
-        // not in cycle, as [0, 0] is and just 4 directions to come back to [0, 0]
-        const points = [[1, 1]];
-        while (points.length > 0) {
-            const [x, y] = points.pop();
-            const current = toPointText(x, y);
-            if (wrapped.has(current) || this.#colors.has(current) || (x < this.#minWidth || x > this.#maxWidth) || (y < this.#minHeight || y > this.#maxHeight)) {
-                continue;
-            }
-            wrapped.add(current);
-            [
-                [x + 1, y],
-                [x - 1, y],
-                [x, y + 1],
-                [x, y - 1],
-            ].forEach(([neighborX, neighborY]) => points.push([neighborX, neighborY]));
-        }
-        return this.cycleLength + wrapped.size;
-    }
+    });
+    // shoelaceFormula => A
+    // perimeter => b
+    // i => interior points
+    // https://en.wikipedia.org/wiki/Pick%27s_theorem
+    // Pick's theorem: A = i + b/2 - 1 => i = A - b/2 + 1
+    // i + b is the total number of points
+    return perimeter + shoelaceFormula([...verticesSet].map(Point.fromString)) - perimeter / 2 + 1;
 }
 
-function toPointText(x, y) {
-    return `${x},${y}`;
+/**
+ * https://www.theoremoftheday.org/GeometryAndTrigonometry/Shoelace/TotDShoelace.pdf
+ *
+ * https://www.101computing.net/the-shoelace-algorithm/
+ */
+function shoelaceFormula(vertices) {
+    let firstSum = 0;
+    let secondSum = 0;
+    for (let i = 0; i < vertices.length - 1; i++) {
+        firstSum += vertices[i].x * vertices[i + 1].y;
+        secondSum += vertices[i + 1].x * vertices[i].y;
+    }
+    firstSum += vertices[vertices.length - 1].x * vertices[0].y;
+    secondSum += vertices[0].x * vertices[vertices.length - 1].y;
+    return Math.abs(firstSum - secondSum) / 2;
+}
+
+class Point {
+    static fromString(string) {
+        const [x, y] = string.slice(1, -1).split(', ');
+        return new Point(parseInt(x), parseInt(y));
+    }
+
+    #x = NaN;
+    #y = NaN;
+
+    constructor(x, y) {
+        this.#x = x;
+        this.#y = y;
+    }
+
+    addX(x) {
+        return new Point(this.#x + x, this.#y);
+    }
+
+    addY(y) {
+        return new Point(this.#x, this.#y + y);
+    }
+
+
+    get x() {
+        return this.#x;
+    }
+
+    get y() {
+        return this.#y;
+    }
+
+    toString() {
+        return `(${this.#x}, ${this.#y})`;
+    }
 }
 
 console.time();
-console.log(new Graph(
+console.log(picksTheorem(
     `L 6 (#3e5440)
     U 4 (#2d3353)
     R 7 (#1de2c0)
@@ -750,5 +741,5 @@ console.log(new Graph(
     L 4 (#522bb2)
     U 2 (#272771)
     L 5 (#357672)
-    U 4 (#2c7923)`).totalWrapped);
+    U 4 (#2c7923)`));
 console.timeEnd();
