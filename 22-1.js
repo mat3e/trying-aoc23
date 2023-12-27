@@ -5,7 +5,6 @@ export function countRemovals(bricks) {
         const colliding = adjacency.get(index);
         // can be removed if all colliding have alternative bricks to rest on
         if ([...colliding].every(i => reverseAdjacency.get(i).size !== 1)) {
-            console.info(toString(brick))
             result++;
         }
     });
@@ -53,9 +52,14 @@ export function settle(input) {
         if (targetBricks.length === targetBefore) {
             targetBricks.push({...brick, z: 1});
         }
-        targetBricks.sort(sortByZ);
+        // check highest first
+        targetBricks.sort(sortByFullZ);
     }
     return targetBricks;
+}
+
+function sortByFullZ({z: a, zLength: aLength}, {z: b, zLength: bLength}) {
+    return a + aLength - b - bLength;
 }
 
 export function sortByZ({z: a}, {z: b}) {
@@ -1373,6 +1377,5 @@ const settled = settle(
     9,5,109~9,7,109
     7,5,144~7,8,144
     7,3,199~7,4,199`);
-// console.info(settled.map(toString).reverse().join('\n'));
 console.log(countRemovals(settled));
 console.timeEnd();
